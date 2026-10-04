@@ -1,0 +1,11 @@
+defaults:
+  - base_config
+  - _self_
+
+model:
+  lr: 0.1
+  type: "GARCH"
+
+tail:
+  type: "parametric"
+  accuracy: 0.5
