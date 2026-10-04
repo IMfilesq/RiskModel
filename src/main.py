@@ -3,7 +3,7 @@ import hydra
 from src.schemas.config import Config
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="config")
+@hydra.main(version_base=None, config_name="config")
 def main(cfg: Config):
     print(cfg)
 

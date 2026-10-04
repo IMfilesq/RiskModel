@@ -1,19 +1,18 @@
 from dataclasses import dataclass, field
 
 from hydra.core.config_store import ConfigStore
-from omegaconf import MISSING
 
 
 @dataclass
 class ModelConfig:
-    lr: float = MISSING
-    type: str = MISSING
+    lr: float = 0.1
+    type: str = "GARCH"
 
 
 @dataclass
 class TailConfig:
-    type: str = MISSING
-    accuracy: float = MISSING
+    type: str = "TAIL"
+    accuracy: float = 0.5
 
 
 @dataclass
@@ -23,4 +22,4 @@ class Config:
 
 
 cs = ConfigStore.instance()
-cs.store(name="config_schema", node=Config)
+cs.store(name="config", node=Config)
