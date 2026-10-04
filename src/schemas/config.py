@@ -23,4 +23,4 @@ class Config:
 
 
 cs = ConfigStore.instance()
-cs.store(name="base_config", node=Config)  # ← inna nazwa niż "config"
+cs.store(name="config_schema", node=Config)
