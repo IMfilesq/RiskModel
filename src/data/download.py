@@ -79,7 +79,7 @@ def _download(
     return df_prices
 
 
-def save(file_path: Path = Path("data/price_data.csv")) -> None:
+def write(file_path: Path = Path("data/price_data.csv")) -> None:
     """Saves the DataFrame to a CSV file."""
     if file_path.exists():
         logger.debug(f"File {file_path} already exists, skipping download.")
@@ -101,4 +101,4 @@ def save(file_path: Path = Path("data/price_data.csv")) -> None:
 
 
 if __name__ == "__main__":
-    save()
+    write()
