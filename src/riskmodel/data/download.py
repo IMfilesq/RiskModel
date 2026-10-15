@@ -1,11 +1,12 @@
 import os
 from logging import getLogger
-from pathlib import Path
 from typing import cast
 
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+
+from riskmodel.schemas.config import DataConfig
 
 load_dotenv()
 
@@ -62,27 +63,22 @@ def _download(
     api_key: str,
     crypto_tickers: tuple[str, ...] = ("btcusd",),
     oth_tickers: tuple[str, ...] = ("GLD", "SPY"),
+    start_date: str = "1900-01-01",
 ) -> pd.DataFrame:
     """Downloads historical market data and automatically aligns the start date
     to the oldest common period for all selected assets, supporting deep historical data.
     """
     prices_dict = {}
 
-    fallback_start_date = "1900-01-01"
-
     logger.info(
         "Downloading historical data from Tiingo to determine common date range..."
     )
 
     for ticker in oth_tickers:
-        prices_dict[ticker.upper()] = _get_eod_stock_data(
-            ticker, fallback_start_date, api_key
-        )
+        prices_dict[ticker.upper()] = _get_eod_stock_data(ticker, start_date, api_key)
 
     for ticker in crypto_tickers:
-        prices_dict[ticker.upper()] = _get_crypto_data(
-            ticker, fallback_start_date, api_key
-        )
+        prices_dict[ticker.upper()] = _get_crypto_data(ticker, start_date, api_key)
 
     df_raw = pd.DataFrame(prices_dict)
 
@@ -98,16 +94,14 @@ def _download(
 
 
 def write(
-    file_path: Path = Path("data/price_data.csv"),
-    crypto_tickers: tuple[str, ...] = ("btcusd",),
-    oth_tickers: tuple[str, ...] = ("GLD", "SPY"),
+    cfg: DataConfig,
 ) -> None:
     """Saves the DataFrame to a CSV file."""
-    if file_path.exists():
-        logger.debug(f"File {file_path} already exists, skipping download.")
+    if cfg.file_path.exists():
+        logger.debug(f"File {cfg.file_path} already exists, skipping download.")
     else:
         logger.debug("Creating the missing data directory...")
-        os.makedirs(file_path.parent, exist_ok=True)
+        os.makedirs(cfg.file_path.parent, exist_ok=True)
         logger.debug("Acessing the Ting api key from .env file...")
         API_KEY = os.getenv("TIINGO_API_KEY")
         if not API_KEY:
@@ -116,11 +110,16 @@ def write(
                 " wpis 'TIINGO_API_KEY'."
             )
         logger.debug("Downloading data from Tiingo...")
-        df = _download(API_KEY, crypto_tickers=crypto_tickers, oth_tickers=oth_tickers)
+        df = _download(
+            API_KEY,
+            crypto_tickers=cfg.crypto_tickers,
+            oth_tickers=cfg.oth_tickers,
+            start_date=cfg.start_date,
+        )
         logger.debug("Saving data locally...")
-        df.to_csv(file_path)
-        logger.info(f"Data saved to {file_path}.")
+        df.to_csv(cfg.file_path)
+        logger.info(f"Data saved to {cfg.file_path}.")
 
 
 if __name__ == "__main__":
-    write()
+    write(DataConfig())
