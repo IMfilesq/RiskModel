@@ -1,6 +1,7 @@
 import os
 from logging import getLogger
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 import requests
@@ -59,27 +60,48 @@ def _get_crypto_data(ticker: str, start_date: str, api_key: str) -> pd.Series:
 
 def _download(
     api_key: str,
-    start_date: str = "2012-01-01",
     crypto_tickers: tuple[str, ...] = ("btcusd",),
     oth_tickers: tuple[str, ...] = ("GLD", "SPY"),
 ) -> pd.DataFrame:
-    """Downoloads specified market data and returns a DataFrame with the adjusted close prices for the given tickers starting from the specified date."""
+    """Downloads historical market data and automatically aligns the start date
+    to the oldest common period for all selected assets, supporting deep historical data.
+    """
     prices_dict = {}
 
-    logger.info(f"Downloading data from Tiingo starting {start_date}...")
+    fallback_start_date = "1900-01-01"
+
+    logger.info(
+        "Downloading historical data from Tiingo to determine common date range..."
+    )
 
     for ticker in oth_tickers:
-        prices_dict[ticker.upper()] = _get_eod_stock_data(ticker, start_date, api_key)
+        prices_dict[ticker.upper()] = _get_eod_stock_data(
+            ticker, fallback_start_date, api_key
+        )
 
     for ticker in crypto_tickers:
-        prices_dict[ticker.upper()] = _get_crypto_data(ticker, start_date, api_key)
+        prices_dict[ticker.upper()] = _get_crypto_data(
+            ticker, fallback_start_date, api_key
+        )
 
-    df_prices = pd.DataFrame(prices_dict).dropna()
+    df_raw = pd.DataFrame(prices_dict)
+
+    common_start_date = max(
+        cast(pd.Timestamp, df_raw[col].first_valid_index()) for col in df_raw.columns
+    )
+
+    logger.info(f"Earliest common start date: {common_start_date.strftime('%Y-%m-%d')}")
+
+    df_prices = df_raw.loc[common_start_date:].dropna()
 
     return df_prices
 
 
-def write(file_path: Path = Path("data/price_data.csv")) -> None:
+def write(
+    file_path: Path = Path("data/price_data.csv"),
+    crypto_tickers: tuple[str, ...] = ("btcusd",),
+    oth_tickers: tuple[str, ...] = ("GLD", "SPY"),
+) -> None:
     """Saves the DataFrame to a CSV file."""
     if file_path.exists():
         logger.debug(f"File {file_path} already exists, skipping download.")
@@ -94,7 +116,7 @@ def write(file_path: Path = Path("data/price_data.csv")) -> None:
                 " wpis 'TIINGO_API_KEY'."
             )
         logger.debug("Downloading data from Tiingo...")
-        df = _download(API_KEY)
+        df = _download(API_KEY, crypto_tickers=crypto_tickers, oth_tickers=oth_tickers)
         logger.debug("Saving data locally...")
         df.to_csv(file_path)
         logger.info(f"Data saved to {file_path}.")
