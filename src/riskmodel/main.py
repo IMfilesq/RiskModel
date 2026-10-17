@@ -2,9 +2,10 @@ from logging import getLogger
 
 import hydra
 
+from riskmodel.config import Config
 from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
-from riskmodel.schemas.config import Config
+from riskmodel.data.market_data import MarketData
 
 logger = getLogger(__name__)
 
@@ -15,7 +16,8 @@ def main(cfg: Config):
     write(cfg.data)
     logger.info("Loading price data...")
     data = load_price_data(cfg.data.file_path)
-    print(data.head())
+    market_data = MarketData(data)
+    print(market_data.df)
     print(cfg)
 
 

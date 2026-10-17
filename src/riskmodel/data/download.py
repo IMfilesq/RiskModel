@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
-from riskmodel.schemas.config import DataConfig
+from riskmodel.config import DataConfig
 
 load_dotenv()
 
