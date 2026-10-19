@@ -18,6 +18,7 @@ dependencies = [
     "pandas-stubs>=3.0.5.260914",
     "python-dotenv>=1.2.4",
     "requests>=2.34.2",
+    "yfinance>=1.7.0",
 ]
 
 [project.scripts]
