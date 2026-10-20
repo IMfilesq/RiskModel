@@ -5,9 +5,13 @@ from hydra.core.config_store import ConfigStore
 
 
 @dataclass()
-class ModelConfig:
-    lr: float = 0.1
-    type: str = "GARCH"
+class ARIMAConfig:
+    order: tuple[int, ...] = (1, 0, 1)
+
+
+@dataclass
+class TestConfig:
+    lb_max_lag: int = 3
 
 
 @dataclass()
@@ -27,8 +31,9 @@ class DataConfig:
 @dataclass()
 class Config:
     data: DataConfig = field(default_factory=DataConfig)
-    model: ModelConfig = field(default_factory=ModelConfig)
+    model: ARIMAConfig = field(default_factory=ARIMAConfig)
     tail: TailConfig = field(default_factory=TailConfig)
+    test: TestConfig = field(default_factory=TestConfig)
 
 
 cs = ConfigStore.instance()
