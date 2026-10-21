@@ -25,6 +25,7 @@ class DataConfig:
     start_date: str = "1900-01-01"
     file_path: Path = Path("data/price_data.csv")
     crypto_tickers: tuple[str, ...] = ("btcusd",)
+    cash_tickers: tuple[str, ...] = ("BIL",)
     oth_tickers: tuple[str, ...] = ("GLD", "SPY", "QQQ", "TLT", "BIL", "XLP", "XLV")
 
 

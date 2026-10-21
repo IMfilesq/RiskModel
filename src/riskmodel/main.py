@@ -8,7 +8,7 @@ from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.transforms import log_returns
-from riskmodel.stat_tests import multi_ac_tests, statio_tests
+from riskmodel.stat_tests import het_test, multi_ac_tests, statio_tests
 
 logger = getLogger(__name__)
 
@@ -37,6 +37,13 @@ def main(omega_cfg: Config):
     logger.info("Performing LB autocorrelation tests")
     ac_pvals = multi_ac_tests(market_data.df, cfg.test.lb_max_lag)
     print(ac_pvals)
+
+    logger.warning(f"{cfg.data.cash_tickers} probably requires ARMA modelling")
+
+    logger.info("Performing heteroscedasticy tests")
+    het_pvals = het_test(market_data.df)
+    print(het_pvals)
+
     # arima_mdl = ARIMA(market_data.df["TLT"], order=(1, 0, 1))
     # garch_mdl = arch_model(
     #     market_data.df["BTCUSD"], dist="studentst"
