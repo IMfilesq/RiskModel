@@ -10,6 +10,12 @@ class ARIMAConfig:
 
 
 @dataclass
+class GARCHConfig:
+    order: tuple[int, ...] = (1, 0, 1)
+    dist: str = "normal"
+
+
+@dataclass
 class TestConfig:
     lb_max_lag: int = 3
 
@@ -32,7 +38,8 @@ class DataConfig:
 @dataclass()
 class Config:
     data: DataConfig = field(default_factory=DataConfig)
-    model: ARIMAConfig = field(default_factory=ARIMAConfig)
+    arima: ARIMAConfig = field(default_factory=ARIMAConfig)
+    garch: GARCHConfig = field(default_factory=GARCHConfig)
     tail: TailConfig = field(default_factory=TailConfig)
     test: TestConfig = field(default_factory=TestConfig)
 

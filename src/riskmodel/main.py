@@ -8,6 +8,7 @@ from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.transforms import log_returns
+from riskmodel.models.garch import garch
 from riskmodel.stat_tests import het_test, multi_ac_tests, statio_tests
 
 logger = getLogger(__name__)
@@ -44,12 +45,9 @@ def main(omega_cfg: Config):
     het_pvals = het_test(market_data.df)
     print(het_pvals)
 
-    # arima_mdl = ARIMA(market_data.df["TLT"], order=(1, 0, 1))
-    # garch_mdl = arch_model(
-    #     market_data.df["BTCUSD"], dist="studentst"
-    # )  # dla btc wychodzą reszty z ciężkimi ogonami, dla GLD reszty bardziej normalne
-    # # w przyszłości i tak będziemy wyciągać reszty i samodzielnie je modelować
-    # print(garch_mdl.fit().summary())
+    logger.info(f"Fitting GARCH {cfg.garch.order} to data")
+    garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
+    print(garch_models["BTCUSD"].fit().summary())
 
 
 if __name__ == "__main__":
