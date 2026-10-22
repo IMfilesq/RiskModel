@@ -47,5 +47,7 @@ def get_pvals(garch_models: dict[str, ARCHModelResult]) -> pd.DataFrame:
 
 def get_params(garch_models: dict[str, ARCHModelResult]) -> pd.DataFrame:
     """Gets coefficients of fitted GARCH models"""
-    pvals = {ticker: model.params for ticker, model in garch_models.items()}
-    return pd.DataFrame(pvals)
+    params_dct = {ticker: model.params for ticker, model in garch_models.items()}
+    df = pd.DataFrame(params_dct)
+    df.loc["alpha[1] + beta[1]"] = df.loc["alpha[1]"] + df.loc["beta[1]"]
+    return df
