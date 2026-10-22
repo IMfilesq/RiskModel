@@ -8,7 +8,7 @@ from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.transforms import log_returns
-from riskmodel.models.garch import garch
+from riskmodel.models.garch import garch, get_params, get_pvals
 from riskmodel.stat_tests import het_test, multi_ac_tests, statio_tests
 
 logger = getLogger(__name__)
@@ -47,7 +47,12 @@ def main(omega_cfg: Config):
 
     logger.info(f"Fitting GARCH {cfg.garch.order} to data")
     garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
-    print(garch_models["BTCUSD"].fit().summary())
+
+    logger.info("GARCH model param pvalues:")
+    print(get_pvals(garch_models))
+
+    logger.info("GARCH model params")
+    print(get_params(garch_models))
 
 
 if __name__ == "__main__":
