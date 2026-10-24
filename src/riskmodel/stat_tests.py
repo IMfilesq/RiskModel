@@ -3,9 +3,11 @@ import warnings
 import pandas as pd
 from arch.unitroot import PhillipsPerron
 from statsmodels.stats.diagnostic import LMTestResult, acorr_ljungbox, het_arch
+from statsmodels.stats.stattools import jarque_bera
 from statsmodels.tools.sm_exceptions import InterpolationWarning
 from statsmodels.tsa.stattools import adfuller, kpss
 
+from riskmodel.data.market_data import MarketData
 from riskmodel.schemas import StatioResult
 
 warnings.simplefilter("ignore", category=InterpolationWarning)
@@ -46,4 +48,15 @@ def het_test(data: pd.DataFrame) -> pd.DataFrame:
             raise TypeError("Wrong type of the het_arch function return value")
         store[ticker] = [test_result.fpval, test_result.lmpval]
     index = ["F-pval", "Lag-pval"]
+    return pd.DataFrame(store, index=index)
+
+
+def normality_tests(data: MarketData) -> pd.DataFrame:
+    store = {}
+    for ticker in data.df.columns:
+        _, pval, skew, kurt = jarque_bera(data.df[ticker])
+        store[ticker] = [pval.item(), skew.item(), kurt.item()]
+
+    index = ["pval", "skewness", "kurtosis"]
+
     return pd.DataFrame(store, index=index)

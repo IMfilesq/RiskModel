@@ -33,6 +33,7 @@ class DataConfig:
     crypto_tickers: tuple[str, ...] = ("btcusd",)
     cash_tickers: tuple[str, ...] = ("BIL",)
     oth_tickers: tuple[str, ...] = ("GLD", "SPY", "QQQ", "TLT", "BIL", "XLP", "XLV")
+    scaling_factors: tuple[float, ...] = (100, 100, 10000, 100, 10000, 10000, 100, 10)
 
 
 @dataclass()

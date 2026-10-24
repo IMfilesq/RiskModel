@@ -1,15 +1,16 @@
 from logging import getLogger
 
 import hydra
+import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 
 from riskmodel.config import Config
 from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
-from riskmodel.data.transforms import log_returns
-from riskmodel.models.garch import garch, get_params, get_pvals
-from riskmodel.stat_tests import het_test, multi_ac_tests, statio_tests
+from riskmodel.data.transforms import log_returns, scale
+from riskmodel.models.garch import garch, get_params, get_pvals, get_std_residuals
+from riskmodel.stat_tests import het_test, multi_ac_tests, normality_tests, statio_tests
 
 logger = getLogger(__name__)
 
@@ -45,6 +46,9 @@ def main(omega_cfg: Config):
     het_pvals = het_test(market_data.df)
     print(het_pvals)
 
+    logger.info("Scaling data according to arch_model warnings")
+    market_data = scale(market_data, cfg.data.scaling_factors)
+
     logger.info(f"Fitting GARCH {cfg.garch.order} to data")
     garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
 
@@ -53,6 +57,18 @@ def main(omega_cfg: Config):
 
     logger.info("GARCH model params")
     print(get_params(garch_models))
+
+    logger.info("Acessing GARCH models residuals")
+    garch_resid = get_std_residuals(garch_models)
+
+    logger.info("Testing heteroscedasticy on GARCH residuals")
+    print(het_test(garch_resid.df))
+
+    logger.info("Testing normality on GARCH residuals")
+    print(normality_tests(market_data))
+
+    plt.hist(garch_resid.df["GLD"], bins=50)
+    plt.savefig("test_plot")
 
 
 if __name__ == "__main__":
