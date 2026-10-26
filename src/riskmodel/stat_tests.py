@@ -2,6 +2,7 @@ import warnings
 
 import pandas as pd
 from arch.unitroot import PhillipsPerron
+from scipy import stats
 from statsmodels.stats.diagnostic import LMTestResult, acorr_ljungbox, het_arch
 from statsmodels.stats.stattools import jarque_bera
 from statsmodels.tools.sm_exceptions import InterpolationWarning
@@ -54,9 +55,10 @@ def het_test(data: pd.DataFrame) -> pd.DataFrame:
 def normality_tests(data: MarketData) -> pd.DataFrame:
     store = {}
     for ticker in data.df.columns:
-        _, pval, skew, kurt = jarque_bera(data.df[ticker])
-        store[ticker] = [pval.item(), skew.item(), kurt.item()]
+        _, JB_pval, skew, kurt = jarque_bera(data.df[ticker])
+        _, SW_pval = stats.shapiro(data.df[ticker])
+        store[ticker] = [JB_pval, SW_pval, skew, kurt]
 
-    index = ["pval", "skewness", "kurtosis"]
+    index = ["JB_pval", "SW_pval", "skewness", "kurtosis"]
 
     return pd.DataFrame(store, index=index)

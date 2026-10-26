@@ -1,7 +1,6 @@
 from logging import getLogger
 
 import hydra
-import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 
 from riskmodel.config import Config
@@ -10,6 +9,8 @@ from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.transforms import log_returns, scale
 from riskmodel.models.garch import garch, get_params, get_pvals, get_std_residuals
+from riskmodel.models.returns import skew_t
+from riskmodel.plot import hist
 from riskmodel.stat_tests import het_test, multi_ac_tests, normality_tests, statio_tests
 
 logger = getLogger(__name__)
@@ -61,14 +62,28 @@ def main(omega_cfg: Config):
     logger.info("Acessing GARCH models residuals")
     garch_resid = get_std_residuals(garch_models)
 
-    logger.info("Testing heteroscedasticy on GARCH residuals")
+    logger.info("Testing heteroscedasticy on standarized GARCH residuals")
     print(het_test(garch_resid.df))
 
-    logger.info("Testing normality on GARCH residuals")
+    logger.info("Testing normality on standarized GARCH residuals")
     print(normality_tests(market_data))
 
-    plt.hist(garch_resid.df["GLD"], bins=50)
-    plt.savefig("test_plot")
+    logger.info("Creating histograms with GARCH standarized residuals")
+    hist(garch_resid)
+
+    logger.info("Fitting skewed-t distributions to data")
+    params = skew_t(market_data)
+    print(params)
+    # import numpy as np
+    # from scipy.stats import jf_skew_t
+    # import matplotlib.pyplot as plt
+
+    # dist = jf_skew_t(*params["SPY"])
+    # x = np.linspace(-3, 3, 100)
+    # d = dist.pdf(x)
+    # plt.hist(garch_resid.df["SPY"], bins = 50, density = True)
+    # plt.plot(x,d)
+    # plt.savefig("test")
 
 
 if __name__ == "__main__":
