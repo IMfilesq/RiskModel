@@ -1,7 +1,10 @@
 from logging import getLogger
 
 import hydra
+import numpy as np
+import pyvinecopulib as pv
 from omegaconf import OmegaConf
+from scipy.stats import jf_skew_t
 
 from riskmodel.config import Config
 from riskmodel.data.download import write
@@ -41,8 +44,6 @@ def main(omega_cfg: Config):
     ac_pvals = multi_ac_tests(market_data.df, cfg.test.lb_max_lag)
     print(ac_pvals)
 
-    logger.warning(f"{cfg.data.cash_tickers} probably requires ARMA modelling")
-
     logger.info("Performing heteroscedasticy tests")
     het_pvals = het_test(market_data.df)
     print(het_pvals)
@@ -74,16 +75,41 @@ def main(omega_cfg: Config):
     logger.info("Fitting skewed-t distributions to data")
     params = skew_t(market_data)
     print(params)
-    # import numpy as np
-    # from scipy.stats import jf_skew_t
-    # import matplotlib.pyplot as plt
 
-    # dist = jf_skew_t(*params["SPY"])
-    # x = np.linspace(-3, 3, 100)
-    # d = dist.pdf(x)
-    # plt.hist(garch_resid.df["SPY"], bins = 50, density = True)
-    # plt.plot(x,d)
-    # plt.savefig("test")
+    # od tego miejsca leci kod z czata, na razie tylko prototyp, nie ufać temu za bardzo
+
+    logger.info("Calculating theoretical CDF of skewed-t residuals for copula input")
+    residuals_df = garch_resid.df
+    u_data = np.zeros_like(residuals_df, dtype=float)
+
+    for i, ticker in enumerate(residuals_df.columns):
+        x = residuals_df[ticker].values
+        # Rozpakowujemy dopasowane parametry dla danego aktywa
+        a, b, loc, sc = params[ticker]
+
+        # Liczymy teoretyczną dystrybuantę (CDF) dla każdej reszty GARCH
+        u_data[:, i] = jf_skew_t.cdf(x, a, b, loc=loc, scale=sc)
+
+    # Zabezpieczenie przed wartościami dokładnie 0.0 lub 1.0 (ważne numerycznie dla kopul)
+    u_data = np.clip(u_data, 1e-10, 1.0 - 1e-10)
+
+    logger.info("Setting up and fitting the Vine Copula (Student-t)")
+    # Settings of copula - use t-student copula
+    controls = pv.FitControlsVinecop(family_set=[pv.BicopFamily.student])
+
+    # Fitting the copula using parametric pseudo-observations (CDF values)
+    copula = pv.Vinecop.from_data(u_data, controls=controls)
+    print(copula)
+
+    logger.info("Generating new data from copula")
+    new_data = copula.sample(n=500)
+    print(new_data)
+
+    # tutaj należy spowrotem przeskalować dane do formatu reszt z garch (przepuścić przez kwantylowe)
+    # potem żeby obliczyć symulowany dzień (kolejny po danych jakie mieliśmy) korzystamy z rówania GARCH
+    # można teraz obliczy VaR na dzień w przód
+    # żeby obliczyć VaR na 10 dni w przód trzeba 10 razy użyć równania GARCH
+    # taka jest głowna idea tego co zostało do roboty ale sam nie do końca wszystko rozumiem
 
 
 if __name__ == "__main__":

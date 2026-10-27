@@ -19,6 +19,7 @@ dependencies = [
     "pandas>=3.0.6",
     "pandas-stubs>=3.0.5.260914",
     "python-dotenv>=1.2.4",
+    "pyvinecopulib>=1.0.1",
     "requests>=2.34.2",
     "statsmodels>=0.15.0",
     "yfinance>=1.7.0",
