@@ -29,6 +29,7 @@ class DataConfig:
         "XLV",
     )  # temporarily removing BIL, has scaling factor 10000
     scaling_factors: tuple[float, ...] = (100, 100, 10000, 100, 10000, 100, 10)
+    weights: tuple[float, ...] = tuple(1 / 7 for _ in range(7))
 
 
 @dataclass()

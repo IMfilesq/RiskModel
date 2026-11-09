@@ -10,7 +10,7 @@ from riskmodel.config import Config
 from riskmodel.data.download import write
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
-from riskmodel.data.transforms import log_returns, scale
+from riskmodel.data.transforms import log_returns, scale, unscale, weighting
 from riskmodel.models.garch import garch, get_params, get_pvals, get_std_residuals
 from riskmodel.models.returns import skew_t
 from riskmodel.plot import hist
@@ -74,15 +74,16 @@ def main(omega_cfg: Config):
 
     logger.info("Fitting skewed-t distributions to data")
     params = skew_t(market_data)
+    params = skew_t(garch_resid)
     print(params)
 
-    # od tego miejsca leci kod z czata, na razie tylko prototyp, nie ufać temu za bardzo
-
+    # Kod z czata
     logger.info("Calculating theoretical CDF of skewed-t residuals for copula input")
     residuals_df = garch_resid.df
     u_data = np.zeros_like(residuals_df, dtype=float)
 
     for i, ticker in enumerate(residuals_df.columns):
+        print(ticker)
         x = residuals_df[ticker].values
         # Rozpakowujemy dopasowane parametry dla danego aktywa
         a, b, loc, sc = params[ticker]
@@ -101,15 +102,65 @@ def main(omega_cfg: Config):
     copula = pv.Vinecop.from_data(u_data, controls=controls)
     print(copula)
 
-    logger.info("Generating new data from copula")
-    new_data = copula.sample(n=500)
-    print(new_data)
+    # Dla jednego dnia raczej bez sensu liczyć, ale zostawiam w razie czego
+    # I nie poprawiam ewentualnych błędów jeżeli są
+    logger.info("Starting Monte Carlo simulation for 1-day VaR")
+    # logger.info("Generating new data from copula")
+    sample = 10000
+    new_data = copula.sample(n=sample)
+    # print(new_data)
+    for i, ticker in enumerate(residuals_df.columns):
+        model = garch_models[ticker]
+        forecast = model.forecast(horizon=1, reindex=False)
+        # print(forecast.variance.iloc[0,0])
+        variance = forecast.variance.iloc[0, 0]
+        # print(forecast.mean.iloc[0,0])
+        mean = forecast.mean.iloc[0, 0]
+        a, b, loc, sc = params[ticker]
+        new_data[:, i] = mean + variance**0.5 * jf_skew_t.ppf(  # type: ignore
+            new_data[:, i], a, b, loc=loc, scale=sc
+        )
+    new_data = unscale(new_data, cfg.data.scaling_factors) / 7
+    var = np.percentile(np.sum(new_data, 1), 1)
+    logger.info("One day VaR")
+    print(var * 100)
 
-    # tutaj należy spowrotem przeskalować dane do formatu reszt z garch (przepuścić przez kwantylowe)
-    # potem żeby obliczyć symulowany dzień (kolejny po danych jakie mieliśmy) korzystamy z rówania GARCH
-    # można teraz obliczy VaR na dzień w przód
-    # żeby obliczyć VaR na 10 dni w przód trzeba 10 razy użyć równania GARCH
-    # taka jest głowna idea tego co zostało do roboty ale sam nie do końca wszystko rozumiem
+    logger.info("Starting Monte Carlo simulation for 10-day VaR")
+    list_samples = [copula.sample(n=sample) for _ in range(10)]
+    for i, ticker in enumerate(residuals_df.columns):
+        model = garch_models[ticker]
+        forecast = model.forecast(horizon=1, reindex=False)
+        variance = forecast.variance.iloc[0, 0]
+        mean = forecast.mean.iloc[0, 0]
+        a, b, loc, sc = params[ticker]
+        alpha = model.params["alpha[1]"]
+        beta = model.params["beta[1]"]
+        omega = model.params["omega"]
+
+        shock = variance**0.5 * jf_skew_t.ppf(  # type: ignore
+            list_samples[0][:, i], a, b, loc=loc, scale=sc
+        )
+        list_samples[0][:, i] = mean + shock  # type: ignore
+        for j in range(1, 10):
+            variance = omega + alpha * np.square(shock) + beta * variance
+            shock = variance**0.5 * jf_skew_t.ppf(
+                list_samples[j][:, i], a, b, loc=loc, scale=sc
+            )
+            list_samples[j][:, i] = mean + shock
+
+    final_data = np.sum(
+        list_samples, axis=0
+    )  # Logarytmiczne stopy zwrotu dla każdego tickera
+    final_data = unscale(final_data, cfg.data.scaling_factors)  # Odskalowanie
+    final_data = np.exp(final_data) - 1  # Przeliczenie stóp logarytmicznych na proste
+    final_data = weighting(final_data, cfg.data.weights)  # Nakładanie wag
+    final_data = np.sum(final_data, 1)  # Łączna stopa dla całego portfela
+    var10 = np.percentile(final_data, 1)
+    logger.info("Ten day VaR 99")
+    print(var10 * 100)
+    logger.info("Ten day ES 97.5")
+    es10 = np.mean(final_data[final_data <= np.percentile(final_data, 2.5)])
+    print(es10 * 100)
 
 
 if __name__ == "__main__":
