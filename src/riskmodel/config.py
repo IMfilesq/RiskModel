@@ -17,6 +17,7 @@ class TestConfig:
 
 @dataclass()
 class DataConfig:
+    use_stooq: bool = True
     start_date: str = "1900-01-01"
     file_path: Path = Path("data/price_data.csv")
     crypto_tickers: tuple[str, ...] = ("btcusd",)
@@ -27,8 +28,18 @@ class DataConfig:
         "TLT",
         "XLP",
         "XLV",
-    )  # temporarily removing BIL, has scaling factor 10000
-    scaling_factors: tuple[float, ...] = (100, 100, 10000, 100, 10000, 100, 10)
+    )  # temporarily removing BIL, has scaling factor 10000 (100, 100, 10000, 100, 10000, 100, 10)
+    scaling_factors: dict[str, float] = field(
+        default_factory=lambda: {
+            "GLD": 100,
+            "SPY": 100,
+            "QQQ": 10000,
+            "TLT": 100,
+            "XLP": 10000,
+            "XLV": 100,
+            "BTCUSD": 10,
+        }
+    )
     weights: tuple[float, ...] = tuple(1 / 7 for _ in range(7))
 
 

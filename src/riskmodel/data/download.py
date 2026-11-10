@@ -93,7 +93,7 @@ def _download(
     return df_prices
 
 
-def write(
+def write_tiingo_data(
     cfg: DataConfig,
 ) -> None:
     """Saves the DataFrame to a CSV file."""
@@ -122,4 +122,4 @@ def write(
 
 
 if __name__ == "__main__":
-    write(DataConfig())
+    write_tiingo_data(DataConfig())
