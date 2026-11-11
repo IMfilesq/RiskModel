@@ -31,6 +31,7 @@ def unscale(data: np.ndarray, scaling_factors: tuple[float, ...]) -> np.ndarray:
 def weighting(data: np.ndarray, weights: tuple[float, ...]) -> np.ndarray:
     assert data.shape[1] == len(weights)
     assert sum(weights) == 1
+    # assert np.isclose(sum(weights), 1.0)
     for index in range(len(weights)):
         data[:, index] = data[:, index] * weights[index]
     return data
