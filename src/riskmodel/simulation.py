@@ -1,5 +1,6 @@
 import numpy as np
 from arch.univariate.base import ARCHModelResult
+from pandas import Index
 from pyvinecopulib import Vinecop
 
 from riskmodel.models.returns import MixedPareto
@@ -9,7 +10,7 @@ def simulation_garch(
     copula: Vinecop,
     garch_models: dict[str, ARCHModelResult],
     dist_models: dict[str, MixedPareto],
-    tickers: tuple[str, ...],
+    tickers: Index,
     horizon: int,
     M: int,
 ) -> np.ndarray:

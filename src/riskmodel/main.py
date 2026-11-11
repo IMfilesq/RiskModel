@@ -11,7 +11,13 @@ from riskmodel.data.market_data import MarketData
 from riskmodel.data.stooq import write_stooq_data
 from riskmodel.data.tiingo import write_tiingo_data
 from riskmodel.data.transforms import log_returns, scale, unscale, weighting
-from riskmodel.models.garch import garch, get_params, get_pvals, get_std_residuals
+from riskmodel.models.garch import (
+    garch,
+    garch_selection,
+    get_params,
+    get_pvals,
+    get_std_residuals,
+)
 from riskmodel.models.returns import mixed
 from riskmodel.plot import hist
 from riskmodel.simulation import simulation_garch
@@ -55,8 +61,16 @@ def main(omega_cfg: Config):
     logger.info("Scaling data according to arch_model warnings")
     market_data = scale(market_data, cfg.data.scaling_factors)
 
-    logger.info(f"Fitting GARCH {cfg.garch.order} to data")
-    garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
+    if cfg.garch.aic_garch:
+        logger.info(
+            f"Fitting GARCH models based on AIC (p_max={cfg.garch.p_max}, q_max={cfg.garch.q_max})"
+        )
+        garch_models = garch_selection(
+            market_data, cfg.garch.dist, cfg.garch.p_max, cfg.garch.q_max
+        )
+    else:
+        logger.info("Fitting user-specified GARCH models to data")
+        garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
 
     logger.info("GARCH model param pvalues:")
     print(get_pvals(garch_models))
@@ -90,7 +104,7 @@ def main(omega_cfg: Config):
 
     for i, ticker in enumerate(residuals_df.columns):
         print(ticker)
-        x = residuals_df[ticker].values
+        x = residuals_df[ticker].to_numpy()
         # Rozpakowujemy dopasowany model dla danego aktywa
         dist = dist_models[ticker]
         # Liczymy teoretyczną dystrybuantę (CDF) dla każdej reszty GARCH
@@ -109,7 +123,12 @@ def main(omega_cfg: Config):
 
     logger.info("Starting Monte Carlo simulations for 10-day VaR and ES")
     simulated_data = simulation_garch(
-        copula, garch_models, dist_models, tuple(residuals_df.columns), 10, 1000
+        copula,
+        garch_models,
+        dist_models,
+        residuals_df.columns,
+        cfg.simulation.horizon,
+        cfg.simulation.n_sims,
     )
     print(simulated_data)
     logger.info("Calculating estimated VaR and ES values")
