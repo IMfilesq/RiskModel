@@ -15,7 +15,7 @@ class MissingParams(Exception):
 
 
 def garch(
-    data: MarketData, order: tuple[int, ...], dist: str
+    data: MarketData, order: tuple[tuple[int, int, int], ...], dist: str
 ) -> dict[str, ARCHModelResult]:
     """Fits univariate GARCH models to each column of the MarketData.df"""
 
@@ -34,12 +34,58 @@ def garch(
     )
 
     result = {}
-    for ticker in data.df.columns:
-        p, o, q = order
-        logger.info(f"Fitting GARCH model to {ticker}")
+    for i, ticker in enumerate(data.df.columns):
+        p, o, q = order[i]
+        logger.info(f"Fitting GARCH({p}, {o}, {q}) model to {ticker}")
         result[ticker] = arch_model(data.df[ticker], p=p, o=o, q=q, dist=dist).fit(
             disp="off"
         )
+    return result
+
+
+def garch_selection(
+    data: MarketData, dist: str, p_max: int, q_max: int
+) -> dict[str, ARCHModelResult]:
+    """Fits best (based on AIC) univariate GARCH model to each column of the MarketData.df"""
+
+    if p_max == 0:
+        raise (ValueError("p must be at least one"))
+    dist = cast(
+        Literal[
+            "normal",
+            "gaussian",
+            "t",
+            "studentst",
+            "skewstudent",
+            "skewt",
+            "ged",
+            "generalized error",
+        ],
+        dist,
+    )
+
+    result = {}
+    for ticker in data.df.columns:
+        best_aic = float("inf")
+        best_model = None
+
+        p_best = 0
+        q_best = 0
+
+        logger.info(f"Fitting GARCH model to {ticker}")
+
+        for p in range(1, p_max + 1):
+            for q in range(q_max + 1):
+                model = arch_model(data.df[ticker], p=p, o=0, q=q, dist=dist).fit(
+                    disp="off"
+                )
+                if model.aic < best_aic:
+                    best_aic = model.aic
+                    best_model = model
+                    p_best = p
+                    q_best = q
+        print(f"{ticker}: GARCH({p_best}, 0, {q_best})")
+        result[ticker] = best_model
     return result
 
 

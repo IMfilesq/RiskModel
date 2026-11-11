@@ -1,13 +1,27 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from hydra.core.config_store import ConfigStore
 
 
 @dataclass
 class GARCHConfig:
-    order: tuple[int, ...] = (1, 0, 1)
+    # order: tuple[int, ...] = (1, 0, 1)
+    # Wyniki na podstawie AIC
+    order: Any = (
+        (6, 0, 9),
+        (2, 0, 2),
+        (4, 0, 2),
+        (2, 0, 2),
+        (1, 0, 3),
+        (2, 0, 5),
+        (1, 0, 1),
+    )
+    aic_garch: bool = False
     dist: str = "normal"
+    p_max: int = 10
+    q_max: int = 10
 
 
 @dataclass
@@ -33,7 +47,7 @@ class DataConfig:
         default_factory=lambda: {
             "GLD": 100,
             "SPY": 100,
-            "QQQ": 10000,
+            "QQQ": 1000,
             "TLT": 100,
             "XLP": 10000,
             "XLV": 100,
@@ -44,10 +58,17 @@ class DataConfig:
 
 
 @dataclass()
+class SimulationConfig:
+    horizon: int = 10
+    n_sims: int = 10000
+
+
+@dataclass()
 class Config:
     data: DataConfig = field(default_factory=DataConfig)
     garch: GARCHConfig = field(default_factory=GARCHConfig)
     test: TestConfig = field(default_factory=TestConfig)
+    simulation: SimulationConfig = field(default_factory=SimulationConfig)
 
 
 cs = ConfigStore.instance()
