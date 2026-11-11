@@ -6,10 +6,10 @@ import pyvinecopulib as pv
 from omegaconf import OmegaConf
 
 from riskmodel.config import Config
-from riskmodel.data.download import write_tiingo_data
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.stooq import write_stooq_data
+from riskmodel.data.tiingo import write_tiingo_data
 from riskmodel.data.transforms import log_returns, scale, unscale, weighting
 from riskmodel.models.garch import garch, get_params, get_pvals, get_std_residuals
 from riskmodel.models.returns import mixed
@@ -94,7 +94,7 @@ def main(omega_cfg: Config):
         # Rozpakowujemy dopasowany model dla danego aktywa
         dist = dist_models[ticker]
         # Liczymy teoretyczną dystrybuantę (CDF) dla każdej reszty GARCH
-        u_data[:, i] = dist._cdf(x)
+        u_data[:, i] = dist._cdf(x)  # type: ignore[attr-defined]
 
     # Zabezpieczenie przed wartościami dokładnie 0.0 lub 1.0 (ważne numerycznie dla kopul)
     u_data = np.clip(u_data, 1e-10, 1.0 - 1e-10)
@@ -109,7 +109,7 @@ def main(omega_cfg: Config):
 
     logger.info("Starting Monte Carlo simulations for 10-day VaR and ES")
     simulated_data = simulation_garch(
-        copula, garch_models, dist_models, residuals_df.columns
+        copula, garch_models, dist_models, tuple(residuals_df.columns), 10, 1000
     )
     print(simulated_data)
     logger.info("Calculating estimated VaR and ES values")

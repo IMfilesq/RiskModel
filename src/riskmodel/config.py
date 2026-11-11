@@ -18,7 +18,8 @@ class TestConfig:
 @dataclass()
 class DataConfig:
     use_stooq: bool = True
-    start_date: str = "1900-01-01"
+    start_date: str = "2010-07-19"
+    end_date: str = "2026-11-09"
     file_path: Path = Path("data/price_data.csv")
     crypto_tickers: tuple[str, ...] = ("btcusd",)
     oth_tickers: tuple[str, ...] = (

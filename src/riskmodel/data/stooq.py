@@ -7,7 +7,12 @@ from riskmodel.config import DataConfig
 logger = getLogger(__name__)
 
 
-def _merge(crypto_tickers: tuple[str, ...], oth_tickers: tuple[str, ...]):
+def _merge(
+    crypto_tickers: tuple[str, ...],
+    oth_tickers: tuple[str, ...],
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
     prices_dict = {}
     for ticker in crypto_tickers:
         df_crypto_raw = pd.read_csv(
@@ -23,7 +28,14 @@ def _merge(crypto_tickers: tuple[str, ...], oth_tickers: tuple[str, ...]):
             date_format="%Y-%m-%d",
         )
         prices_dict[ticker.upper()] = df_oth_raw.set_index("Data")["Zamkniecie"]
-    df = pd.DataFrame(prices_dict).rename_axis("date").dropna()
+
+    df = (
+        pd.DataFrame(prices_dict)
+        .rename_axis("date")
+        .sort_index()  # Sortowanie indeksu dat (wymagane dla poprawnego slicing'u)
+        .dropna()
+        .loc[start_date:end_date]  # Ucięcie do zadanego zakresu
+    )
     return df
 
 
@@ -34,12 +46,5 @@ def write_stooq_data(
     if cfg.file_path.exists():
         logger.debug(f"File {cfg.file_path} already exists, skipping download.")
     else:
-        df = _merge(cfg.crypto_tickers, cfg.oth_tickers)
+        df = _merge(cfg.crypto_tickers, cfg.oth_tickers, cfg.start_date, cfg.end_date)
         df.to_csv(cfg.file_path)
-
-
-if __name__ == "__main__":
-    crypto_tickers = ("btcusd",)
-    oth_tickers = ("GLD", "SPY", "QQQ", "TLT", "XLP", "XLV")
-    df = _merge(crypto_tickers, oth_tickers)
-    print(df.shape)

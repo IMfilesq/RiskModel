@@ -222,3 +222,4 @@ __marimo__/
 #custom
 outputs/
 price_data.csv
+data/stooq_data/*
