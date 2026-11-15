@@ -19,7 +19,7 @@ from riskmodel.models.garch import (
     get_std_residuals,
 )
 from riskmodel.models.returns import mixed
-from riskmodel.plot import hist
+from riskmodel.plot import graphs, graphs_single
 from riskmodel.simulation import simulation_garch
 from riskmodel.stat_tests import het_test, multi_ac_tests, normality_tests, statio_tests
 
@@ -87,15 +87,17 @@ def main(omega_cfg: Config):
     logger.info("Testing normality on standarized GARCH residuals")
     print(normality_tests(market_data))
 
-    logger.info("Creating histograms with GARCH standarized residuals")
-    hist(garch_resid)
-
     logger.info(
         "Fitting semi-parametric distribution with Pareto tails and a histogram-based body to data"
     )
     dist_models = mixed(garch_resid)
 
-    # Kod z czata
+    logger.info("Creating stacked graphs for GARCH standarized residuals")
+    graphs(garch_resid, dist_models)
+
+    logger.info("Creating single graphs for GARCH standarized residuals")
+    graphs_single(garch_resid, dist_models)
+
     logger.info(
         "Calculating theoretical CDF of semi-parametric distribution with Pareto tails and a histogram-based body residuals for copula input"
     )
@@ -130,7 +132,6 @@ def main(omega_cfg: Config):
         cfg.simulation.horizon,
         cfg.simulation.n_sims,
     )
-    print(simulated_data)
     logger.info("Calculating estimated VaR and ES values")
 
     # tymczasowe rozwiązanie z unscaling_tuple, to jest do poprawy bo jest podatne na błędy w kolejności tickerów
@@ -143,11 +144,11 @@ def main(omega_cfg: Config):
     data = weighting(data, cfg.data.weights)
     data = np.sum(data, 1)
 
-    var = np.percentile(data, 1)
+    var = np.percentile(data, 2.5)
     logger.info("Var")
     print(abs(var * 100))
 
-    es = np.mean(data[data <= np.percentile(data, 2.5)])
+    es = np.mean(data[data <= var])
     logger.info("ES")
     print(abs(es * 100))
 

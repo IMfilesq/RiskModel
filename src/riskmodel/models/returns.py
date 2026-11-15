@@ -10,7 +10,6 @@ class MixedPareto:
     q_u: float
     v_l: float
     v_u: float
-    data_c: np.ndarray
     bins: np.ndarray
     pdf_c: np.ndarray
     cdf_c: np.ndarray
@@ -30,94 +29,107 @@ class MixedPareto:
         if not (0 < q_l < 1) or not (0 < q_u < 1) or (q_l >= q_u):
             raise (ValueError("Incorrectly selected percentiles"))
         data = np.asarray(data, dtype=np.float64).flatten()
+        data.sort()
         self.data = data
-        self.q_l = q_l
-        self.q_u = q_u
-        self.q_c = q_u - q_l
         self._fit(data, q_l, q_u)
 
     def _fit(self, data: np.ndarray, q_l: float, q_u: float) -> None:
 
         # Wartości percentyli
-        v_l = np.percentile(data, q_l * 100)
-        v_u = np.percentile(data, q_u * 100)
+        n = len(data)
+
+        v_l_index = int(np.ceil(n * q_l))
+        v_l = data[v_l_index - 1]
+
+        v_u_index = int(np.floor(n * q_u))
+        v_u = data[v_u_index]
+
         self.v_l, self.v_u = v_l, v_u
 
-        # Dane w środku
-        data_c = data[(self.v_l <= data) & (data <= self.v_u)]
-        self.data_c = data_c
+        # Dane w danej części
+        data_l = data[:v_l_index]
+        data_u = data[v_u_index:]
+        data_c = data[v_l_index:v_u_index]
+
+        # Aktulizacja percentyli
+        q_l = v_l_index / n
+        q_u = v_u_index / n
+        self.q_l, self.q_u = q_l, q_u
+        self.q_c = q_u - q_l
 
         # Rozkład empiryczny
-        hist, bins = np.histogram(data_c, bins=20, density=True)
+        hist, bins = np.histogram(data_c, bins="fd", density=True, range=(v_l, v_u))
         self.bins = bins
         self.pdf_c = hist
         self.cdf_c = np.concatenate([[0], np.cumsum(hist * np.diff(bins))])
 
         # Parametry ogonów
-        self.c_l, _, self.scale_l = genpareto.fit(
-            self.v_l - data[data < self.v_l], floc=0
-        )
-        self.c_u, _, self.scale_u = genpareto.fit(
-            data[data > self.v_u] - self.v_u, floc=0
-        )
+        self.c_l, _, self.scale_l = genpareto.fit(v_l - data_l, floc=0)
+        self.c_u, _, self.scale_u = genpareto.fit(data_u - v_u, floc=0)
 
-    def _pdf_single(self, x: float) -> np.ndarray:
+    def _pdf_single(self, x: float) -> float:
 
         # PDF lewy ogon
         if x < self.v_l:
-            return self.q_l * genpareto.pdf(self.v_l - x, self.c_l, 0, self.scale_l)
+            return float(
+                self.q_l * genpareto.pdf(self.v_l - x, self.c_l, 0, self.scale_l)
+            )
 
         # PDF prawy ogon
         if x > self.v_u:
-            return (1 - self.q_u) * genpareto.pdf(
-                x - self.v_u, self.c_u, 0, self.scale_u
+            return float(
+                (1 - self.q_u) * genpareto.pdf(x - self.v_u, self.c_u, 0, self.scale_u)
             )
 
         # PDF środek
         if x == self.bins[-1]:
-            return self.q_c * self.pdf_c[-1]
+            return float(self.q_c * self.pdf_c[-1])
 
         idx = np.searchsorted(self.bins, x, side="right") - 1
-        idx = np.clip(idx, 0, len(self.pdf_c) - 1)
-        return self.q_c * self.pdf_c[idx]
+        return float(self.q_c * self.pdf_c[idx])
 
-    def _cdf_single(self, t: float) -> np.ndarray:
+    def _cdf_single(self, t: float) -> float:
 
         # CDF lewy ogon
         if t < self.v_l:
-            return self.q_l * (
-                1 - genpareto.cdf(self.v_l - t, self.c_l, 0, self.scale_l)
+            return float(
+                self.q_l * (1 - genpareto.cdf(self.v_l - t, self.c_l, 0, self.scale_l))
             )
 
         # CDF prawy ogon
         if t >= self.v_u:
-            return self.q_u + (1 - self.q_u) * genpareto.cdf(
-                t - self.v_u, self.c_u, 0, self.scale_u
+            return float(
+                self.q_u
+                + (1 - self.q_u)
+                * genpareto.cdf(t - self.v_u, self.c_u, 0, self.scale_u)
             )
 
         # CDF środek
-        # idx = np.searchsorted(self.bins, t, side="right") - 1
-        # idx = np.clip(idx, 0, len(self.cdf_c)-1)
-        return np.squeeze(self.q_l + self.q_c * np.interp(t, self.bins, self.cdf_c))
+        return float(self.q_l + self.q_c * np.interp(t, self.bins, self.cdf_c))
 
-    def _ppf_single(self, p: float) -> np.ndarray:
+    def _ppf_single(self, p: float) -> float:
 
         if not (0 < p < 1):
             raise (ValueError("Probability must be in the (0;1) interval"))
 
         # PPF lewy ogon
         if p <= self.q_l:
-            return self.v_l - genpareto.ppf(1 - p / self.q_l, self.c_l, 0, self.scale_l)
+            return float(
+                self.v_l - genpareto.ppf(1 - p / self.q_l, self.c_l, 0, self.scale_l)
+            )
 
         # PPF prawy ogon
         if p > self.q_u:
-            return self.v_u + genpareto.ppf(
-                (p - self.q_u) / (1 - self.q_u), self.c_u, 0, self.scale_u
+            return float(
+                self.v_u
+                + genpareto.ppf(
+                    (p - self.q_u) / (1 - self.q_u), self.c_u, 0, self.scale_u
+                )
             )
 
         # PPF środek
         p_c = (p - self.q_l) / self.q_c
-        return np.asarray(np.interp(p_c, self.cdf_c, self.bins))
+        return float(np.interp(p_c, self.cdf_c, self.bins))
 
     def _pdf(self, x: np.typing.ArrayLike) -> np.ndarray:
         return np.vectorize(self._pdf_single)(np.asarray(x))
