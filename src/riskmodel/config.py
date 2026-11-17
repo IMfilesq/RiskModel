@@ -9,13 +9,22 @@ from hydra.core.config_store import ConfigStore
 class GARCHConfig:
     # order: tuple[int, ...] = (1, 0, 1)
     # Wyniki na podstawie AIC
+    # order: Any = (
+    #     (6, 0, 9),
+    #     (2, 0, 2),
+    #     (4, 0, 2),
+    #     (2, 0, 2),
+    #     (1, 0, 3),
+    #     (2, 0, 5),
+    #     (1, 0, 1),
+    # )
     order: Any = (
-        (6, 0, 9),
-        (2, 0, 2),
-        (4, 0, 2),
-        (2, 0, 2),
-        (1, 0, 3),
-        (2, 0, 5),
+        (1, 0, 1),
+        (1, 0, 1),
+        (1, 0, 1),
+        (1, 0, 1),
+        (1, 0, 1),
+        (1, 0, 1),
         (1, 0, 1),
     )
     aic_garch: bool = False
@@ -31,6 +40,7 @@ class TestConfig:
 
 @dataclass()
 class DataConfig:
+    window_size: int = 1000
     use_stooq: bool = True
     start_date: str = "2010-07-19"
     end_date: str = "2026-11-09"
@@ -65,11 +75,23 @@ class SimulationConfig:
 
 
 @dataclass()
+class PlotConfig:
+    create_plots: bool = True
+
+
+@dataclass()
+class BacktestConfig:
+    run: bool = False
+
+
+@dataclass()
 class Config:
     data: DataConfig = field(default_factory=DataConfig)
     garch: GARCHConfig = field(default_factory=GARCHConfig)
     test: TestConfig = field(default_factory=TestConfig)
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
+    plot: PlotConfig = field(default_factory=PlotConfig)
+    backtest: BacktestConfig = field(default_factory=BacktestConfig)
 
 
 cs = ConfigStore.instance()

@@ -3,7 +3,9 @@ import numpy as np
 from riskmodel.data.transforms import unscale, weighting
 
 
-def metrics(data: np.ndarray, scaling_factors: tuple, weights: tuple) -> None:
+def metrics(
+    data: np.ndarray, scaling_factors: tuple, weights: tuple
+) -> dict[str, float]:
 
     data = unscale(data, scaling_factors)
     data = np.exp(data) - 1
@@ -15,3 +17,5 @@ def metrics(data: np.ndarray, scaling_factors: tuple, weights: tuple) -> None:
 
     es = np.mean(data[data <= var])
     print(f"ES: {es}")
+
+    return {"VaR": var, "ES": es}
