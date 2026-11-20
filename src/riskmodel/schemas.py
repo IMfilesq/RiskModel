@@ -34,3 +34,4 @@ class RiskMeasures:
 
     var: float
     es: float
+    es_quantile: float

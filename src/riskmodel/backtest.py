@@ -24,7 +24,7 @@ def back_metrics(
     data: MarketData, window_size: int, step: int, cfg: Config
 ) -> pd.DataFrame:
     """Calculates backtest metrics for rolling windows of the data."""
-    results = {"ES": [], "VaR": [], "actual": []}
+    results = {"ES": [], "VaR": [], "actual": [], "ES_quantile": []}
     for split in _rolling_windows(data.df, window_size, step):
         train_data = MarketData(split.train)
         test_data = MarketData(split.test)
@@ -37,13 +37,14 @@ def back_metrics(
         results["ES"].append(measures.es)
         results["VaR"].append(measures.var)
         results["actual"].append(portfolio_return)
+        results["ES_quantile"].append(measures.es_quantile)
     return pd.DataFrame(results)
 
 
-def empirical_metrics(back_metricks: pd.DataFrame):
+def empirical_metrics(back_metricks: pd.DataFrame) -> EmpiricalMetrics:
     """Calculates empirical metrics based on backtest results."""
     var_violations = (back_metricks["actual"] < back_metricks["VaR"]).sum()
-    emp_es = back_metricks[back_metricks["actual"] < back_metricks["VaR"]][
+    emp_es = back_metricks[back_metricks["actual"] < back_metricks["ES_quantile"]][
         "actual"
     ].mean()
     return EmpiricalMetrics(var_violations=var_violations, emp_es=emp_es)

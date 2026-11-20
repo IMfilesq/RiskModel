@@ -110,6 +110,8 @@ def main_model(cfg: Config, market_data: MarketData) -> RiskMeasures:
         cfg.risk_measure.var_level,
     )
 
-    logger.info(f"Estimated VaR: {risk_measures.var}, Estimated ES: {risk_measures.es}")
+    logger.info(
+        f"Estimated VaR: {risk_measures.var}, Estimated ES: {risk_measures.es}, Estimated ES quantile: {risk_measures.es_quantile}"
+    )
 
-    return RiskMeasures(var=risk_measures.var, es=risk_measures.es)
+    return risk_measures

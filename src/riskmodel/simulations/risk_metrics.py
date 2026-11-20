@@ -19,7 +19,7 @@ def metrics(
 
     var = np.percentile(data, 100 * (1 - VaR_level))
 
-    ES_threshold = np.percentile(data, 100 * (1 - ES_level))
-    es = np.mean(data[data <= ES_threshold])
+    es_quantile = np.percentile(data, 100 * (1 - ES_level))
+    es = np.mean(data[data <= es_quantile])
 
-    return RiskMeasures(var=var, es=es)
+    return RiskMeasures(var=var, es=es, es_quantile=es_quantile)
