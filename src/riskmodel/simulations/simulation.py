@@ -1,5 +1,6 @@
 import numpy as np
 from arch.univariate.base import ARCHModelResult
+from numba import njit
 from pandas import Index
 from pyvinecopulib import Vinecop
 
@@ -26,14 +27,14 @@ def simulation_garch(
         model = garch_models[ticker]
 
         volatility = model.model.volatility
-        p = getattr(volatility, "p", 1)
-        q = getattr(volatility, "q", 1)
-        k = max(p, q)
-        eps_init = model.resid[-k:]
-        sig2_init = model.conditional_volatility[-k:] ** 2
+        p = int(getattr(volatility, "p", 1))
+        q = int(getattr(volatility, "q", 1))
+        k = int(max(p, q))
+        eps_init = np.asarray(model.resid[-k:])
+        sig2_init = np.asarray(model.conditional_volatility[-k:] ** 2)
         params = model.params
-        mu = params["mu"]
-        omega = params["omega"]
+        mu = float(params["mu"])
+        omega = float(params["omega"])
         alpha = np.array([params[f"alpha[{idx}]"] for idx in range(1, p + 1)])[::-1]
         beta = np.array([params[f"beta[{idx}]"] for idx in range(1, q + 1)])[::-1]
 
@@ -41,25 +42,49 @@ def simulation_garch(
         dist = dist_models[ticker]
         resid = dist._ppf(sample_list[:, i, :])
 
-        total_len = k + horizon
-        eps_buf = np.empty(total_len)
-        sig2_buf = np.empty(total_len)
-        simulated_returns = np.zeros((M, horizon))
-
-        for x in range(M):
-            eps_buf[:k] = eps_init
-            sig2_buf[:k] = sig2_init
-            for y in range(horizon):
-                idx = k + y
-                alpha_term = np.dot(alpha, eps_buf[idx - p : idx] ** 2)
-                beta_term = np.dot(beta, sig2_buf[idx - q : idx])
-                sig2 = omega + alpha_term + beta_term
-                eps_t = np.sqrt(sig2) * resid[x, y]
-                sig2_buf[idx] = sig2
-                eps_buf[idx] = eps_t
-                simulated_returns[x, y] = eps_t
-
-        daily_returns = simulated_returns + mu
-        final_returns[:, i] = np.sum(daily_returns, axis=1)
+        final_returns[:, i] = simulation_garch_numba(
+            resid, eps_init, sig2_init, alpha, beta, mu, omega
+        )
 
     return final_returns
+
+
+@njit(cache=True)
+def simulation_garch_numba(
+    resid: np.ndarray,
+    eps_init: np.ndarray,
+    sig2_init: np.ndarray,
+    alpha: np.ndarray,
+    beta: np.ndarray,
+    mu: float,
+    omega: float,
+):
+
+    M, horizon = resid.shape
+    p = len(alpha)
+    q = len(beta)
+    k = max(p, q)
+
+    eps_buf = np.empty(k + horizon)
+    sig2_buf = np.empty(k + horizon)
+
+    simulated_returns = np.zeros(M)
+
+    for x in range(M):
+        eps_buf[:k] = eps_init
+        sig2_buf[:k] = sig2_init
+        for y in range(horizon):
+            idx = k + y
+            alpha_term = 0
+            for i in range(p):
+                alpha_term += alpha[i] * eps_buf[idx - p + i] ** 2
+            beta_term = 0
+            for i in range(q):
+                beta_term += beta[i] * sig2_buf[idx - q + i]
+            sig2 = omega + alpha_term + beta_term
+            eps_t = np.sqrt(sig2) * resid[x, y]
+            sig2_buf[idx] = sig2
+            eps_buf[idx] = eps_t
+            simulated_returns[x] += eps_t + mu
+
+    return simulated_returns

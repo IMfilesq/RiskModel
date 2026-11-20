@@ -32,6 +32,7 @@ def main(omega_cfg: Config):
     main_model(cfg, MarketData(data))
 
     if cfg.backtest.run:
+        cfg.plot.create_plots = False
         logger.info("Running backtests...")
         bm = back_metrics(
             MarketData(data), cfg.data.window_size, cfg.simulation.horizon, cfg

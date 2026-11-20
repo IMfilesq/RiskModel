@@ -18,8 +18,8 @@ class GARCHConfig:
     )
     aic_garch: bool = False
     dist: str = "normal"
-    p_max: int = 10
-    q_max: int = 10
+    p_max: int = 5
+    q_max: int = 5
 
 
 @dataclass
@@ -59,7 +59,7 @@ class PlotConfig:
 
 @dataclass()
 class BacktestConfig:
-    run: bool = False
+    run: bool = True
 
 
 @dataclass()

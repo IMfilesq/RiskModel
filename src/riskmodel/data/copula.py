@@ -18,7 +18,19 @@ def _copula(data: MarketData, dist: dict[str, MixedPareto]) -> pv.Vinecop:
     # Zabezpieczenie przed wartościami dokładnie 0.0 lub 1.0
     u_data = np.clip(u_data, 1e-10, 1.0 - 1e-10)
 
-    controls = pv.FitControlsVinecop(family_set=[pv.BicopFamily.student])
+    controls = pv.FitControlsVinecop(
+        family_set=[
+            pv.BicopFamily.gaussian,
+            pv.BicopFamily.student,
+            pv.BicopFamily.gumbel,
+            pv.BicopFamily.bb1,
+            pv.BicopFamily.indep,
+        ],
+        trunc_lvl=3,
+        selection_criterion="mbic",
+        threshold=0.05,
+        select_trunc_lvl=True,
+    )
     copula = pv.Vinecop.from_data(u_data, controls=controls)
 
     return copula
