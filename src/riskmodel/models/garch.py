@@ -37,9 +37,9 @@ def garch(
     for i, ticker in enumerate(data.df.columns):
         p, o, q = order[i]
         logger.info(f"Fitting GARCH({p}, {o}, {q}) model to {ticker}")
-        result[ticker] = arch_model(data.df[ticker], p=p, o=o, q=q, dist=dist).fit(
-            disp="off"
-        )
+        result[ticker] = arch_model(
+            data.df[ticker], p=p, o=o, q=q, dist=dist, rescale=True
+        ).fit(disp="off")
     return result
 
 
@@ -110,3 +110,9 @@ def get_std_residuals(garch_models: dict[str, ARCHModelResult]) -> MarketData:
     """Gets coefficients of fitted GARCH models"""
     resid_dct = {ticker: model.std_resid for ticker, model in garch_models.items()}
     return MarketData(pd.DataFrame(resid_dct))
+
+
+def get_scaling(garch_models: dict[str, ARCHModelResult]) -> dict[str, float]:
+    """Gets scaling factors for each ticker"""
+    scaling_factors = {ticker: model.scale for ticker, model in garch_models.items()}
+    return scaling_factors

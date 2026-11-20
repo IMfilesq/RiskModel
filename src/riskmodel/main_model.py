@@ -3,12 +3,13 @@ from logging import getLogger
 from riskmodel.config import Config
 from riskmodel.data.copula import _copula
 from riskmodel.data.market_data import MarketData
-from riskmodel.data.transforms import log_returns, scale
+from riskmodel.data.transforms import log_returns
 from riskmodel.models.garch import (
     garch,
     garch_selection,
     get_params,
     get_pvals,
+    get_scaling,
     get_std_residuals,
 )
 from riskmodel.models.returns import mixed
@@ -40,8 +41,8 @@ def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
     het_pvals = het_test(market_data.df)
     print(het_pvals)
 
-    logger.info("Scaling data according to arch_model warnings")
-    market_data = scale(market_data, cfg.data.scaling_factors)
+    # logger.info("Scaling data according to arch_model warnings")
+    # market_data = scale(market_data, cfg.data.scaling_factors)
 
     if cfg.garch.aic_garch:
         logger.info(
@@ -96,9 +97,11 @@ def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
         cfg.simulation.n_sims,
     )
 
+    scaling_factors = get_scaling(garch_models)
+
     logger.info("Calculating estimated VaR and ES values")
     unscaling_factors = tuple(
-        cfg.data.scaling_factors[ticker] for ticker in garch_resid.df.columns
+        scaling_factors[ticker] for ticker in garch_resid.df.columns
     )
     risk_measures = metrics(simulated_data, unscaling_factors, cfg.data.weights)
     return ModelResult(ES=risk_measures["ES"], VaR=risk_measures["VaR"])
