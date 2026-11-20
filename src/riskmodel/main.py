@@ -4,7 +4,7 @@ import hydra
 from omegaconf import OmegaConf
 from scipy.stats import binomtest
 
-from riskmodel.backtest import empirical_metrics
+from riskmodel.backtest import back_metrics, empirical_metrics
 from riskmodel.config import Config
 from riskmodel.data.load import load_price_data
 from riskmodel.data.market_data import MarketData
@@ -33,25 +33,23 @@ def main(omega_cfg: Config):
 
     if cfg.backtest.run:
         logger.info("Running backtests...")
-        # bm = back_metrics(
-        #     MarketData(data), cfg.data.window_size, cfg.simulation.horizon, cfg
-        # )
-        import pandas as pd
-
-        bm = pd.DataFrame(
-            {
-                "VaR": [100, 100, 100, 100, 100],
-                "ES": [1, 2, 3, 4, 5],
-                "actual": [99, 101, 99, 101, 120],
-            }
+        bm = back_metrics(
+            MarketData(data), cfg.data.window_size, cfg.simulation.horizon, cfg
         )
         print(bm)
         logger.info("Evaluating backtest results...")
         em = empirical_metrics(bm)
         print(em)
-        t = binomtest(em[0], n=len(bm), p=0.025, alternative="two-sided")
+        t = binomtest(
+            em.var_violations,
+            n=len(bm),
+            p=1 - cfg.risk_measure.var_level,
+            alternative="two-sided",
+        )
+        logger.info(
+            f"P-value with H0 that VaR is {cfg.risk_measure.var_level}: {t.pvalue}"
+        )
         print(t.pvalue)
-        print(t.proportion_ci())
 
 
 if __name__ == "__main__":

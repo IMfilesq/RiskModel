@@ -76,9 +76,9 @@ def garch_selection(
 
         for p in range(1, p_max + 1):
             for q in range(q_max + 1):
-                model = arch_model(data.df[ticker], p=p, o=0, q=q, dist=dist).fit(
-                    disp="off"
-                )
+                model = arch_model(
+                    data.df[ticker], p=p, o=0, q=q, dist=dist, rescale=True
+                ).fit(disp="off")
                 if model.aic < best_aic:
                     best_aic = model.aic
                     best_model = model

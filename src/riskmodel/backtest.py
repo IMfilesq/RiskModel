@@ -7,7 +7,7 @@ from riskmodel.config import Config
 from riskmodel.data.market_data import MarketData
 from riskmodel.data.transforms import weighting
 from riskmodel.main_model import main_model
-from riskmodel.schemas import TrainTestSplit
+from riskmodel.schemas import EmpiricalMetrics, TrainTestSplit
 
 
 def _rolling_windows(
@@ -34,8 +34,8 @@ def back_metrics(
         )
         weighted_returns = weighting(actual_returns, cfg.data.weights)
         portfolio_return = weighted_returns.sum()
-        results["ES"].append(measures.ES)
-        results["VaR"].append(measures.VaR)
+        results["ES"].append(measures.es)
+        results["VaR"].append(measures.var)
         results["actual"].append(portfolio_return)
     return pd.DataFrame(results)
 
@@ -46,4 +46,4 @@ def empirical_metrics(back_metricks: pd.DataFrame):
     emp_es = back_metricks[back_metricks["actual"] < back_metricks["VaR"]][
         "actual"
     ].mean()
-    return var_violations, emp_es
+    return EmpiricalMetrics(var_violations=var_violations, emp_es=emp_es)

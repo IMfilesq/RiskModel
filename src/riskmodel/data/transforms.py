@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from riskmodel.data.market_data import MarketData
-
 
 def log_returns(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -12,15 +10,8 @@ def log_returns(df: pd.DataFrame) -> pd.DataFrame:
     return df.apply(lambda x: np.log(x), axis=0).diff()[1:]
 
 
-def scale(data: MarketData, scaling_factors: dict[str, float]) -> MarketData:
-    assert len(data.df.columns) == len(scaling_factors)
-    for ticker, factor in scaling_factors.items():
-        print(f"scaling {ticker} by {factor}")
-        data.df[ticker] = data.df[ticker] * factor
-    return data
-
-
 def unscale(data: np.ndarray, scaling_factors: tuple[float, ...]) -> np.ndarray:
+    """Unscales the data by dividing each column by its corresponding scaling factor."""
     assert data.shape[1] == len(scaling_factors)
     for i, factor in enumerate(scaling_factors):
         print(f"unscaling column {i} by {factor}")

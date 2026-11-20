@@ -14,7 +14,7 @@ from riskmodel.models.garch import (
 )
 from riskmodel.models.returns import mixed
 from riskmodel.plot import graphs, graphs_single
-from riskmodel.schemas import ModelResult
+from riskmodel.schemas import RiskMeasures
 from riskmodel.simulations.risk_metrics import metrics
 from riskmodel.simulations.simulation import simulation_garch
 from riskmodel.stat_tests import het_test, multi_ac_tests, normality_tests, statio_tests
@@ -22,7 +22,7 @@ from riskmodel.stat_tests import het_test, multi_ac_tests, normality_tests, stat
 logger = getLogger(__name__)
 
 
-def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
+def main_model(cfg: Config, market_data: MarketData) -> RiskMeasures:
     logger.info("Transforming to log returns")
     market_data.df = log_returns(market_data.df)
 
@@ -41,9 +41,6 @@ def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
     het_pvals = het_test(market_data.df)
     print(het_pvals)
 
-    # logger.info("Scaling data according to arch_model warnings")
-    # market_data = scale(market_data, cfg.data.scaling_factors)
-
     if cfg.garch.aic_garch:
         logger.info(
             f"Fitting GARCH models based on AIC (p_max={cfg.garch.p_max}, q_max={cfg.garch.q_max})"
@@ -54,6 +51,10 @@ def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
     else:
         logger.info("Fitting user-specified GARCH models to data")
         garch_models = garch(market_data, cfg.garch.order, cfg.garch.dist)
+
+    logger.info("Scaling factors chosen by GARCH models:")
+    scaling_factors = get_scaling(garch_models)
+    print(scaling_factors)
 
     logger.info("GARCH model param pvalues:")
     print(get_pvals(garch_models))
@@ -97,11 +98,18 @@ def main_model(cfg: Config, market_data: MarketData) -> ModelResult:
         cfg.simulation.n_sims,
     )
 
-    scaling_factors = get_scaling(garch_models)
-
     logger.info("Calculating estimated VaR and ES values")
     unscaling_factors = tuple(
         scaling_factors[ticker] for ticker in garch_resid.df.columns
     )
-    risk_measures = metrics(simulated_data, unscaling_factors, cfg.data.weights)
-    return ModelResult(ES=risk_measures["ES"], VaR=risk_measures["VaR"])
+    risk_measures = metrics(
+        simulated_data,
+        unscaling_factors,
+        cfg.data.weights,
+        cfg.risk_measure.es_level,
+        cfg.risk_measure.var_level,
+    )
+
+    logger.info(f"Estimated VaR: {risk_measures.var}, Estimated ES: {risk_measures.es}")
+
+    return RiskMeasures(var=risk_measures.var, es=risk_measures.es)

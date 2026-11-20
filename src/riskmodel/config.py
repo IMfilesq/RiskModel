@@ -7,17 +7,6 @@ from hydra.core.config_store import ConfigStore
 
 @dataclass
 class GARCHConfig:
-    # order: tuple[int, ...] = (1, 0, 1)
-    # Wyniki na podstawie AIC
-    # order: Any = (
-    #     (6, 0, 9),
-    #     (2, 0, 2),
-    #     (4, 0, 2),
-    #     (2, 0, 2),
-    #     (1, 0, 3),
-    #     (2, 0, 5),
-    #     (1, 0, 1),
-    # )
     order: Any = (
         (1, 0, 1),
         (1, 0, 1),
@@ -53,17 +42,6 @@ class DataConfig:
         "TLT",
         "XLP",
         "XLV",
-    )  # temporarily removing BIL, has scaling factor 10000 (100, 100, 10000, 100, 10000, 100, 10)
-    scaling_factors: dict[str, float] = field(
-        default_factory=lambda: {
-            "GLD": 100,
-            "SPY": 100,
-            "QQQ": 1000,
-            "TLT": 100,
-            "XLP": 10000,
-            "XLV": 100,
-            "BTCUSD": 10,
-        }
     )
     weights: tuple[float, ...] = tuple(1 / 7 for _ in range(7))
 
@@ -85,6 +63,12 @@ class BacktestConfig:
 
 
 @dataclass()
+class RisMeasureConfig:
+    es_level: float = 0.975
+    var_level: float = 0.975
+
+
+@dataclass()
 class Config:
     data: DataConfig = field(default_factory=DataConfig)
     garch: GARCHConfig = field(default_factory=GARCHConfig)
@@ -92,6 +76,7 @@ class Config:
     simulation: SimulationConfig = field(default_factory=SimulationConfig)
     plot: PlotConfig = field(default_factory=PlotConfig)
     backtest: BacktestConfig = field(default_factory=BacktestConfig)
+    risk_measure: RisMeasureConfig = field(default_factory=RisMeasureConfig)
 
 
 cs = ConfigStore.instance()
